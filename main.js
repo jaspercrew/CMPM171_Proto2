@@ -30,7 +30,9 @@ characters = [
 options = {
 	viewSize: {x: G.WIDTH, y: G.HEIGHT},
 	theme: "dark",
-	isReplayEnabled: true
+	isReplayEnabled: true,
+	isPlayingBgm: true,
+	seed: 26,
 };
 
 /**
@@ -80,7 +82,6 @@ let Boxes;
  */
 let ColorButtons;
 
-
 /**
  * @typedef {{
  * pos: Vector
@@ -92,10 +93,23 @@ let ColorButtons;
  * @type { Obstacle [] }
  */
 
+/**
+ * @typedef {{
+* color: Color
+* }} guh
+*/
+
+/**
+ * @type { guh }
+ */
+let guh;
+
 // Top level var declarations
 let Obstacles;
 let obstacleSpawnTimer;
+let x;
 
+//Constantly updating
 function update() {
 	score += 1;
 	if (!ticks) {
@@ -106,6 +120,7 @@ function update() {
 	obstacle_update();
 	button_update();
 	cursor_update();
+	guh_update();
 }
 
 function start(){
@@ -117,6 +132,10 @@ function start(){
 	cursor = {
 		pos: vec(G.WIDTH * 0.5, G.HEIGHT * 0.5),
 	};
+	guh = {
+		color:"red"
+	}
+
 	Obstacles = [];
 	Boxes = [];
 
@@ -139,32 +158,13 @@ function start(){
 
 function gameEnd(){
 	end();
-	
 	// TODO: find some sound to play on death
-	play("powerUp");
+	play("hit");
 }
 
-function cursor_update(){
-	 // Updating and drawing the cursor
-	 cursor.pos = vec(input.pos.x, input.pos.y);
-	 cursor.pos.clamp(0, G.WIDTH, 0, G.HEIGHT);
-	 color ("black");
-	 let visualPos = vec(cursor.pos.x - 1, cursor.pos.y - 1)
-	 rect(visualPos, 3,3);
-
-	 console.log(player.color == "red")
-	 if (input.isJustPressed && player.color == "red"){
-		console.log("swap from red to green");
-		player.color = "green";
-	 }
-	 else if (input.isJustPressed && player.color == "green"){
-		console.log("swap from green to blue");
-		player.color = "blue";
-	 }
-	 else if (input.isJustPressed && player.color == "blue"){
-		console.log("swap from blue to red");
-		player.color = "red";
-	 }
+function cursor_update() {
+    cursor.pos = vec(input.pos.x, input.pos.y);
+    cursor.pos.clamp(0, G.WIDTH, 0, G.HEIGHT);
 }
 
 function player_update(){
@@ -172,6 +172,7 @@ function player_update(){
     char("a", player.pos);
 }
 
+//'boxes' are the ground
 function box_update(){
 	// Time to spawn new box
     if (ticks % 10 == 0) {
@@ -191,16 +192,32 @@ function box_update(){
         color(b.color);
         box(b.pos, 10);
     });
-
+	
+	
 	// Time to spawn new obstacle
 	if (ticks % obstacleSpawnTimer == 0) {
 		// Create the obstacle
+
 		Obstacles.push({
 			pos: vec(G.WIDTH + 10, player.pos.y - 10),
 
 			// TODO: more advanced color randomization
-			color: Obstacles.length % 2 == 0 ? "red" : "green"
+			//color: Obstacles.length % 2 == 0 ? "red" : "green"
+			color: guh.color
 		});
+	}
+}
+
+function guh_update(){
+	x = Math.floor(Math.random() * 3);
+	if (x == 0) {
+		guh.color = "red"
+	}
+	if (x == 1) {
+		guh.color = "blue"
+	}
+	if (x == 2) {
+		guh.color = "green"
 	}
 }
 
@@ -225,8 +242,8 @@ function obstacle_update(){
 		// Move the obstacles backwards
 		o.pos.x -= G.SCROLLSPEED;
 
-
-        if (isCollidingWithPlayer && o.color != player.color) { // If collision happens AND colors are mismatching, DIE
+		// If collision happens AND colors are mismatching, end game
+        if (isCollidingWithPlayer && o.color != player.color) { 
 			gameEnd();
         }
 		
@@ -234,19 +251,20 @@ function obstacle_update(){
 	});
 }
 
-function button_update(){
-	ColorButtons.forEach((b) => {
-		// Drawing
-		color(b.color);
-		let r = rect(b.pos, 10, 10);
+function button_update() {
+    ColorButtons.forEach((b) => {
+        color(b.color);
+        box(b.pos, 10); // assuming the button size is always 10, adjust accordingly
 
-		// let isCollidingWithCursor = r.isColliding
-		// // TODO: this color switching does not work aaaaaa
-		// console.log("colliding: "+ isCollidingWithCursor)
-        // if (isCollidingWithCursor && input.isPressed) {
-		// 	console.log("SWAP TO: " + b.color);
-
-		// 	player.color = b.color
-        // }
-	});
+        if (
+            input.isJustPressed &&
+            input.pos.x >= b.pos.x &&
+            input.pos.x <= b.pos.x + 10 && 
+            input.pos.y >= b.pos.y &&
+            input.pos.y <= b.pos.y + 10 
+        ) {
+            console.log("SWAP TO: " + b.color);
+            player.color = b.color;
+        }
+    });
 }
